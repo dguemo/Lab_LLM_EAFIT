@@ -21,11 +21,11 @@ st.set_page_config(page_title="Explorador LLM — Groq", page_icon="🧠", layou
 # ---------------------------------------------------------------------------
 # Recursos cacheados
 # ---------------------------------------------------------------------------
-@st.cache_resource(show_spinner="Cargando modelo de embeddings...")
+@st.cache_resource(show_spinner="Preparando embeddings...")
 def load_embedder():
-    from sentence_transformers import SentenceTransformer
-
-    return SentenceTransformer("all-MiniLM-L6-v2")
+    """Embeddings basados en TF-IDF (alternativa ligera sin sentence-transformers)"""
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    return TfidfVectorizer(max_features=100, strip_accents='unicode')
 
 
 @st.cache_data(show_spinner="Consultando modelos disponibles en Groq...")
@@ -182,7 +182,7 @@ with tab_bow:
 
 # --- Embeddings --------------------------------------------------------
 with tab_emb:
-    st.subheader("Embeddings")
+    st.subheader("Embeddings (TF-IDF)")
     emb_text = st.text_area(
         "Textos (uno por línea)",
         "El gato duerme\nEl perro corre\nLa inteligencia artificial avanza rápido",
@@ -193,9 +193,11 @@ with tab_emb:
     if st.button("Calcular embeddings"):
         if not emb_docs:
             st.error("Ingresa al menos un texto.")
+        elif len(emb_docs) < 2:
+            st.error("Necesitas al menos 2 textos para calcular embeddings.")
         else:
-            embedder = load_embedder()
-            vectors = embedder.encode(emb_docs)
+            vectorizer = load_embedder()
+            vectors = vectorizer.fit_transform(emb_docs).toarray()
             st.write(f"Dimensión de cada embedding: **{vectors.shape[1]}**")
             n_preview = min(10, vectors.shape[1])
             st.dataframe(
@@ -230,8 +232,8 @@ with tab_sim:
             st.error("Completa ambos textos.")
         else:
             if metodo.startswith("Embeddings"):
-                embedder = load_embedder()
-                vecs = embedder.encode([text_a, text_b])
+                vectorizer = load_embedder()
+                vecs = vectorizer.fit_transform([text_a, text_b]).toarray()
             else:
                 vectorizer = CountVectorizer()
                 vecs = vectorizer.fit_transform([text_a, text_b]).toarray()
