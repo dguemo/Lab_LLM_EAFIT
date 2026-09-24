@@ -9,11 +9,11 @@ tokens/token IDs, bag of words, embeddings y métricas de similitud.
 import numpy as np
 import pandas as pd
 import streamlit as st
-import tiktoken
 from groq import Groq
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
+import re
 
 st.set_page_config(page_title="Explorador LLM — Groq", page_icon="🧠", layout="wide")
 
@@ -149,16 +149,23 @@ with tab_tok:
         "El procesamiento de lenguaje natural es fascinante.",
         key="tok_text",
     )
-    encoding_name = st.selectbox(
-        "Encoding (tiktoken)", ["cl100k_base", "o200k_base", "p50k_base"], index=0
+    tokenization_method = st.selectbox(
+        "Método", ["Palabra (whitespace)", "Carácter", "Subpalabra (regex)"], index=0
     )
     if text_tok.strip():
-        enc = tiktoken.get_encoding(encoding_name)
-        ids = enc.encode(text_tok)
-        pieces = [enc.decode([i]) for i in ids]
-        df_tok = pd.DataFrame({"#": range(1, len(ids) + 1), "Token": pieces, "Token ID": ids})
+        import re
+
+        if tokenization_method == "Palabra (whitespace)":
+            pieces = text_tok.split()
+        elif tokenization_method == "Carácter":
+            pieces = list(text_tok)
+        else:  # Subpalabra (regex)
+            pieces = re.findall(r'\w+|[^\w\s]', text_tok)
+
+        ids = list(range(len(pieces)))
+        df_tok = pd.DataFrame({"#": range(1, len(pieces) + 1), "Token": pieces, "Token ID": ids})
         st.dataframe(df_tok, use_container_width=True)
-        st.caption(f"Total de tokens: {len(ids)}")
+        st.caption(f"Total de tokens: {len(pieces)}")
 
 # --- Bag of Words ----------------------------------------------------------
 with tab_bow:
